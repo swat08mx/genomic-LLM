@@ -1,5 +1,6 @@
 from collections import defaultdict
 from tqdm import tqdm
+import torch
 
 class Tokenizer:
 
@@ -93,8 +94,11 @@ class Tokenizer:
 
 
 class Data_process(Tokenizer):
-    def Encode_data(self, data, vocab_size, splits):
+    def Encode_data(self, data, vocab_size, splits, vocab):
         encoded,_ = self.Encode(data, vocab_size)
         clean_data = self.split_data(encoded, splits)
-        #tokens = [vocab["<SOS>"]] + [vocab[w.encode("utf-8")] for w in data] + [vocab["<EOS>"]]
-        return clean_data
+        final=[]
+        for sen in clean_data:
+            final.append([vocab["<SOS>"]] + sen + [vocab["<EOS>"]])
+        final = torch.tensor(final)
+        return final
