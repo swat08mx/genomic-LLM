@@ -31,7 +31,6 @@ class Tokenizer:
                 new_data.append(data[-1])
             return new_data, merges
 
-        vocab = vocab
         diff = vocab - 256
         merged={}
         print("Encoding...")
