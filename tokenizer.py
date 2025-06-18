@@ -1,6 +1,7 @@
 from collections import defaultdict
 from tqdm import tqdm
 import torch
+import random
 
 class Tokenizer:
 
@@ -31,6 +32,7 @@ class Tokenizer:
                 new_data.append(data[-1])
             return new_data, merges
 
+        vocab = vocab
         diff = vocab - 256
         merged={}
         print("Encoding...")
@@ -71,9 +73,9 @@ class Tokenizer:
         for (p0, p1), idx in merged.items():
             vocab[idx] = vocab[p0] + vocab[p1]
         new_vocab = {v: k for k, v in vocab.items()}
-        new_vocab["<EOS>"]=total_tokens+1
-        new_vocab["<SOS>"]=total_tokens+2
-        new_vocab["<EOS>"]=total_tokens+3
+        new_vocab["<UNK>"]=total_tokens+1
+        new_vocab["<MASK>"]=total_tokens+2
+        new_vocab["<PAD>"]=total_tokens+3
         new_vocab["<CLS>"]=total_tokens+4
         return new_vocab
 
@@ -91,13 +93,34 @@ class Tokenizer:
             count+=1
         return splitted_data
 
+    def generate_mask(self, data, vocab):
+        masked_input=[]
+        label=[]
+        nums = int(float(len(data)) * 0.15)
+        selected_idx = random.sample(range(len(data)), nums)
+        for i in range(len(data)):
+            if i in selected_idx:
+                masked_input.append(vocab["<MASK>"])
+                label.append(data[i])
+            else:
+                masked_input.append(data[i])
+                label.append(-100)
+        return masked_input, label
+
 
 class Data_process(Tokenizer):
     def Encode_data(self, data, vocab_size, splits, vocab):
         encoded,_ = self.Encode(data, vocab_size)
         clean_data = self.split_data(encoded, splits)
-        final=[]
-        for sen in clean_data:
-            final.append([vocab["<SOS>"]] + sen + [vocab["<EOS>"]])
-        final = torch.tensor(final)
-        return final
+        masked=[]
+        mask_label=[]
+        for s in clean_data:
+            masked_data, label = self.generate_mask(s, vocab)
+            masked.append(masked_data)
+            mask_label.append(label)
+        final_data = [[vocab["<CLS>"]] + sen for sen in masked]
+        final_label = [[-100] + leb for leb in mask_label]
+        ### padding omitted as we control the data
+        final_data = torch.tensor(final_data)
+        final_label = torch.tensor(final_label)
+        return final_data, final_label
